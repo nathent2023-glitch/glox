@@ -19,6 +19,7 @@ import './glox';
 import { seedPreviewDoc } from './glox';
 import './style.css';
 import { bootProject, applyProjectToProvider, registerProjectCommands } from './project';
+import { registerCudicAi, setSupaToken } from './cudic-ai/extension';
 import * as monaco from 'monaco-editor';
 import * as vscode from 'vscode';
 import {
@@ -222,6 +223,19 @@ await initializeMonacoService(
 
 // Phase 2 — Cudic: Save project / Import files / Import folder / Export as zip
 registerProjectCommands();
+
+// Cudic AI built-in (right-side chat panel + ghost autocomplete).
+void registerCudicAi(shadowRoot);
+function pushSupaToken(): void {
+  try {
+    const raw = localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
+    setSupaToken(raw ? (JSON.parse(raw).access_token as string) ?? null : null);
+  } catch {
+    setSupaToken(null);
+  }
+}
+pushSupaToken();
+setInterval(pushSupaToken, 60000);
 
 // Seed Preview's fallback doc so first-open Preview renders with zero clicks.
 void seedPreviewDoc();

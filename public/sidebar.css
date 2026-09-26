@@ -40,20 +40,16 @@ body {
 }
 
 /* ── Sidebar ─────────────────────────────────────────────── */
+/* Container is a fixed 72px spacer; on hover the page content slides aside
+   (transform, zero reflow) so the open card never covers page text. */
 .sidebar {
   width: 72px;
   background: transparent;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   flex-shrink: 0;
   height: 100%;
-  padding: 12px;
-  overflow-y: auto;
-  overflow-x: visible;
-  transition: width 0.22s ease;
+  position: relative;
+  z-index: 0;
 }
-.sidebar:hover { width: 220px; }
 
 /* Single sidebar card - nav + servers + profile, fills full height */
 .sidebar-nav-card {
@@ -62,11 +58,28 @@ body {
   border-radius: 16px;
   display: flex;
   flex-direction: column;
-  flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
   padding: 16px 0;
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 12px;
+  width: 48px;
+  z-index: 60;
+  transition: width 0.22s ease, box-shadow 0.22s ease;
+}
+.sidebar:hover .sidebar-nav-card {
+  width: 196px;
+  box-shadow: 8px 0 32px rgba(46, 42, 75, 0.18);
+}
+/* Push-aside: card right edge sits at 208px (left 12 + width 196), rail is
+   72px, so content slides 148px — leaving the same 12px gap the collapsed
+   rail has, and transform means grid columns never recalculate mid-slide. */
+@media (hover:hover) {
+  nav.sidebar + * { transition: transform 0.32s cubic-bezier(0.22,1,0.36,1); }
+  body.sb-open nav.sidebar + * { transform: translateX(148px); }
 }
 .sidebar:not(:hover) .account-row { justify-content: center; gap: 0; }
 .sidebar:not(:hover) #accountRow > div:nth-child(2) { display: none; }
@@ -337,3 +350,62 @@ body {
 }
 
 .empty-card .btn { width: auto; padding: 10px 20px; }
+
+/* ── Theme packs ───────────────────────────────────────────── */
+#packBg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+#packBg img, #packBg video, #packBg canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+html[data-pack-bg] { background: var(--ink); }
+html[data-pack-bg] body { background: transparent; }
+/* Layouts go transparent so pack art shows through; cards stay solid. */
+html[data-pack-bg] nav.sidebar + .games-layout,
+html[data-pack-bg] nav.sidebar + .chat-layout,
+html[data-pack-bg] nav.sidebar + .lobbies-layout,
+html[data-pack-bg] nav.sidebar + .profile-layout,
+html[data-pack-bg] nav.sidebar + .servers-layout,
+html[data-pack-bg] nav.sidebar + .game-layout,
+html[data-pack-bg] nav.sidebar + .themes-layout,
+html[data-pack-bg] nav.sidebar + .auth-layout { background: transparent; }
+html[data-pack-bg] .topbar {
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+  backdrop-filter: blur(6px);
+}
+html[data-pack-bg] .empty-card h2,
+html[data-pack-bg] .empty-card p,
+html[data-pack-bg] .topbar h1 { text-shadow: 0 1px 14px rgba(0, 0, 0, 0.55); }
+/* Pack sidebar background: art fills the card under a dark scrim so labels
+   and icons stay readable in both collapsed and expanded states. */
+nav.sidebar.has-rail-bg .sidebar-nav-card {
+  background-image: linear-gradient(rgba(8, 6, 24, 0.74), rgba(8, 6, 24, 0.74)), var(--rail-bg);
+  background-size: cover, cover;
+  background-position: center top, center top;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+/* Neon icon set: glow instead of redrawn shapes. */
+nav.sidebar.pack-icons-neon .sidebar-item svg {
+  filter: drop-shadow(0 0 5px var(--signal)) saturate(1.4);
+}
+nav.sidebar.pack-icons-neon .sidebar-item.active svg {
+  filter: drop-shadow(0 0 7px var(--signal)) saturate(1.6);
+}
+/* Motion presets. */
+html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after {
+  animation-duration: 0.001s !important;
+  transition-duration: 0.001s !important;
+}
+html[data-motion="playful"] .game-card, html[data-motion="playful"] .pack-card {
+  transition: transform 0.18s ease, border-color 0.15s;
+}
+html[data-motion="playful"] .game-card:hover, html[data-motion="playful"] .pack-card:hover {
+  transform: translateY(-3px);
+}

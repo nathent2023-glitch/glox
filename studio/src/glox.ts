@@ -699,7 +699,10 @@ registerAction2(
         id: 'glox.run',
         title: { value: 'Cudic: Run active file', original: 'Cudic: Run active file' },
         category: 'Cudic',
-        menu: [{ id: MenuId.CommandPalette }]
+        menu: [
+          { id: MenuId.CommandPalette },
+          { id: MenuId.EditorContext, group: 'cudic' }
+        ]
       });
     }
     async run(): Promise<void> {
@@ -716,7 +719,8 @@ registerAction2(
         title: { value: 'Cudic: Leave Studio', original: 'Cudic: Leave Studio' },
         menu: [
           { id: MenuId.CommandPalette },
-          { id: MenuId.MenubarFileMenu, group: '5_glox' }
+          { id: MenuId.MenubarFileMenu, group: '5_glox' },
+          { id: MenuId.EditorContext, group: 'cudic' }
         ]
       });
     }

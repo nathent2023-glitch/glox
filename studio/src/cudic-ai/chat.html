@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-__NONCE__'; style-src 'unsafe-inline';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; padding: 0; display: flex; flex-direction: column;
+    font-family: var(--vscode-font-family, sans-serif);
+    font-size: var(--vscode-font-size, 13px);
+    color: var(--vscode-foreground, #dbe4ff);
+    background: var(--vscode-sideBar-background, transparent);
+  }
+  .cfg { padding: 10px 12px 6px; border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, #2d2d2d); display: flex; flex-direction: column; gap: 7px; flex-shrink: 0; max-height: 52%; overflow-y: auto; }
+  .cfg label { font-size: 11px; opacity: 0.75; display: flex; flex-direction: column; gap: 3px; }
+  select, input[type="text"], input[type="password"], textarea {
+    background: var(--vscode-input-background, #1e1e1e);
+    color: var(--vscode-input-foreground, #fff);
+    border: 1px solid var(--vscode-input-border, #3c3c3c);
+    border-radius: 5px; padding: 5px 7px; font: inherit; width: 100%;
+  }
+  select:focus, input:focus, textarea:focus { outline: 1px solid var(--vscode-focusBorder, #774DCB); outline-offset: -1px; }
+  .row { display: flex; gap: 6px; align-items: center; }
+  .row .grow { flex: 1; min-width: 0; }
+  button {
+    background: var(--vscode-button-secondaryBackground, #3a3d41);
+    color: var(--vscode-button-secondaryForeground, #fff);
+    border: none; border-radius: 5px; padding: 5px 10px; font: inherit; cursor: pointer; white-space: nowrap;
+  }
+  button:hover { background: var(--vscode-button-secondaryHoverBackground, #45494e); }
+  button.primary { background: var(--vscode-button-background, #774DCB); color: var(--vscode-button-foreground, #fff); }
+  button.primary:hover { background: var(--vscode-button-hoverBackground, #643BAD); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .hint { font-size: 11px; opacity: 0.65; line-height: 1.45; }
+  .hint a { color: var(--vscode-textLink-foreground, #774DCB); }
+  .ok { color: var(--vscode-testing-iconPassed, #4ec9b0); }
+  .err { color: var(--vscode-errorForeground, #f48771); }
+  #msgs { flex: 1; min-height: 90px; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
+  #emptyState { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 24px; }
+  #emptyState .big { font-size: 28px; opacity: 0.9; }
+  #emptyState h3 { margin: 0; font-size: 14px; }
+  #emptyState p { margin: 0; font-size: 12px; opacity: 0.65; max-width: 220px; line-height: 1.5; }
+  #emptyState button.primary { font-size: 13px; padding: 8px 18px; }
+  .msg { line-height: 1.5; word-wrap: break-word; }
+  .msg.user { background: var(--vscode-input-background, #1e1e1e); border-radius: 8px; padding: 8px 10px; align-self: flex-end; max-width: 100%; white-space: pre-wrap; }
+  .msg.ai { align-self: stretch; }
+  .msg.ai .who { font-size: 11px; opacity: 0.6; margin-bottom: 3px; }
+  .msg .body { white-space: pre-wrap; }
+  .codeblock { margin: 6px 0; border: 1px solid var(--vscode-input-border, #3c3c3c); border-radius: 6px; overflow: hidden; }
+  .codeblock .chead { display: flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 11px; opacity: 0.9; background: var(--vscode-input-background, #1e1e1e); }
+  .codeblock .chead .fname { font-family: monospace; overflow: hidden; text-overflow: ellipsis; }
+  .codeblock .chead .sp { flex: 1; }
+  .codeblock .chead button { padding: 2px 8px; font-size: 11px; }
+  .codeblock pre { margin: 0; padding: 8px 10px; overflow-x: auto; font-family: var(--vscode-editor-font-family, monospace); font-size: 12px; }
+  #composer { border-top: 1px solid var(--vscode-sideBarSectionHeader-border, #2d2d2d); padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
+  #chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 11px; padding: 2px 9px; border-radius: 99px; border: 1px solid var(--vscode-input-border, #3c3c3c); cursor: pointer; opacity: 0.85; }
+  .chip.off { opacity: 0.4; text-decoration: line-through; }
+  #q { min-height: 64px; resize: vertical; }
+  .cursor { display: inline-block; width: 7px; height: 1em; background: var(--vscode-foreground, #fff); vertical-align: text-bottom; animation: blink 0.9s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+</style>
+</head>
+<body>
+  <div class="cfg">
+    <label>Provider
+      <select id="provider"></select>
+    </label>
+    <div class="row">
+      <div class="grow"><label style="margin:0">Model
+        <input id="model" type="text" list="modelList" placeholder="pick or type a model id">
+        <datalist id="modelList"></datalist>
+      </label></div>
+      <button id="modelsBtn" title="Fetch live model list">⟳</button>
+    </div>
+    <div class="row">
+      <div class="grow"><label style="margin:0"><span id="keyLabel">API key</span>
+        <input id="key" type="password" placeholder="paste key" autocomplete="off" spellcheck="false">
+      </label></div>
+      <button id="saveBtn" class="primary">Save</button>
+      <button id="testBtn" title="Send a tiny test completion">Test</button>
+    </div>
+    <div class="hint" id="keyHint"></div>
+    <div class="hint" id="keyState"></div>
+    <label style="flex-direction:row;align-items:center;gap:6px"><input id="completeOn" type="checkbox" style="width:auto"> Ghost autocomplete (Tab)</label>
+    <label>Completion model (blank = chat model)
+      <input id="completeModel" type="text" placeholder="e.g. a small fast model">
+    </label>
+    <div class="hint" id="provNote"></div>
+  </div>
+  <div id="msgs"><div id="emptyState"></div></div>
+  <div id="composer">
+    <div id="chips"></div>
+    <textarea id="q" placeholder="Ask about your project… (Enter to send, Shift+Enter for newline)"></textarea>
+    <div class="row">
+      <button id="sendBtn" class="primary grow">Send</button>
+      <button id="stopBtn" disabled>Stop</button>
+      <button id="clearBtn" title="Clear chat">Clear</button>
+    </div>
+  </div>
+<script nonce="__NONCE__">
+(function () {
+  // Webview API when hosted as a real webview, plain postMessage when
+  // hosted in the Studio side panel iframe (sandboxed srcdoc).
+  var api = (function () {
+    try { if (typeof acquireVsCodeApi === 'function') return acquireVsCodeApi(); } catch (e) {}
+    return { postMessage: function (m) { parent.postMessage(m, '*'); } };
+  })();
+  var $ = function (id) { return document.getElementById(id); };
+  var providerEl = $('provider'), modelEl = $('model'), modelList = $('modelList'),
+    keyEl = $('key'), keyLabel = $('keyLabel'), keyHint = $('keyHint'), keyState = $('keyState'),
+    completeOn = $('completeOn'), completeModel = $('completeModel'), provNote = $('provNote'),
+    msgs = $('msgs'), q = $('q'), chips = $('chips'),
+    sendBtn = $('sendBtn'), stopBtn = $('stopBtn'), clearBtn = $('clearBtn');
+  var PRESETS = [], SETTINGS = { provider: 'zen', model: '', baseOverride: '', completeOn: true, completeModel: '', hasKey: false };
+  var history = [], streaming = null, attachActive = true, chatted = false, fetchedFor = {};
+
+  // Pull the live model list whenever we have (or don't need) a key —
+  // once per provider per session. Kills stale-ID errors at the root.
+  function maybeFetch() {
+    var p = preset();
+    if (!p || !p.modelsPath || fetchedFor[SETTINGS.provider]) return;
+    if (!SETTINGS.hasKey && !p.keyOptional && !p.publicModels) return;
+    fetchedFor[SETTINGS.provider] = true;
+    api.postMessage({ type: 'ai:models' });
+  }
+
+  function needsKey() {
+    var p = preset();
+    return !p.keyOptional && !SETTINGS.hasKey;
+  }
+  // Centered empty state: big Add-provider button until a key exists,
+  // friendly hint afterwards. Returns to this on Clear.
+  function showEmpty() {
+    var box = $('emptyState');
+    if (!box || chatted) return;
+    if (needsKey()) {
+      box.innerHTML = '<div class="big">✦</div><h3>Power Studio with AI</h3>' +
+        '<p>Pick a provider up top, paste a key — free options included.</p>' +
+        '<button class="primary" id="emptyAdd">＋ Add a provider</button>';
+      $('emptyAdd').onclick = function () { keyEl.focus(); };
+    } else {
+      box.innerHTML = '<div class="big">✦</div><h3>Ask about your project</h3>' +
+        '<p>The active file attaches automatically. Code answers get Apply buttons.</p>';
+    }
+  }
+
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function preset() { return PRESETS.find(function (p) { return p.id === SETTINGS.provider; }) || PRESETS[0]; }
+
+  function refreshCfg() {
+    var p = preset();
+    providerEl.innerHTML = PRESETS.map(function (x) {
+      return '<option value="' + x.id + '"' + (x.id === SETTINGS.provider ? ' selected' : '') + '>' + esc(x.name) + '</option>';
+    }).join('');
+    modelList.innerHTML = (p.models || []).map(function (m) { return '<option value="' + esc(m) + '">'; }).join('');
+    if (!modelEl.value && SETTINGS.model) modelEl.value = SETTINGS.model;
+    keyLabel.textContent = p.keyLabel || 'API key';
+    keyHint.innerHTML = esc(p.keyHelp || '') + (p.note ? '<br>' + esc(p.note) : '');
+    provNote.textContent = p.loopback ? 'Local engine — called direct from your browser, never proxied.' : 'Cloud calls route through your Cudic login (sign in on the site). Keys stay in this browser.';
+    keyState.innerHTML = p.keyOptional ? '<span class="ok">no key needed</span>' :
+      (SETTINGS.hasKey ? '<span class="ok">✓ key saved in this browser</span>' : '<span class="err">no key saved yet</span>');
+    keyEl.placeholder = SETTINGS.hasKey ? '•••••••• (saved — paste to replace)' : 'paste key';
+    completeOn.checked = !!SETTINGS.completeOn;
+    if (SETTINGS.completeModel) completeModel.value = SETTINGS.completeModel;
+  }
+
+  function chipHtml() {
+    chips.innerHTML = '<span class="chip' + (attachActive ? '' : ' off') + '" id="chipFile" title="Include the active file as context">📄 active file</span>';
+    $('chipFile').onclick = function () { attachActive = !attachActive; chipHtml(); };
+  }
+
+  function addUser(text) {
+    var d = document.createElement('div');
+    d.className = 'msg user'; d.textContent = text;
+    msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
+  }
+  function addAi() {
+    var d = document.createElement('div');
+    d.className = 'msg ai';
+    d.innerHTML = '<div class="who">Cudic AI</div><div class="body"><span class="cursor"></span></div>';
+    msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
+    return d.querySelector('.body');
+  }
+  // Minimal markdown: fenced code blocks with Apply (```lang:/path) + Copy.
+  function renderAi(bodyEl, raw) {
+    var html = '', last = 0, re = /```(\w*)(?::([^\n]*))?\n([\s\S]*?)(?:```|$)/g, m;
+    function text(t) { return esc(t); }
+    while ((m = re.exec(raw)) !== null) {
+      html += text(raw.slice(last, m.index));
+      var lang = m[1] || 'code', fpath = (m[2] || '').trim(), code = m[3].replace(/\n$/, '');
+      var id = 'cb' + Math.random().toString(36).slice(2, 8);
+      html += '<div class="codeblock" data-code="' + id + '"><div class="chead"><span>' + esc(lang) + '</span>' +
+        (fpath ? '<span class="fname">' + esc(fpath) + '</span>' : '') + '<span class="sp"></span>' +
+        (fpath ? '<button data-apply="' + id + '">Apply</button>' : '') +
+        '<button data-copy="' + id + '">Copy</button></div><pre>' + esc(code) + '</pre></div>';
+      html += '<span data-store="' + id + '" data-path="' + esc(fpath) + '" style="display:none">' + esc(code) + '</span>';
+      last = m.index + m[0].length;
+    }
+    html += text(raw.slice(last));
+    bodyEl.innerHTML = html;
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+  msgs.addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-copy],button[data-apply]');
+    if (!b) return;
+    var id = b.getAttribute('data-copy') || b.getAttribute('data-apply');
+    var store = msgs.querySelector('span[data-store="' + id + '"]');
+    if (!store) return;
+    if (b.hasAttribute('data-copy')) {
+      try { navigator.clipboard.writeText(store.textContent); b.textContent = 'Copied'; } catch (err) {}
+      setTimeout(function () { b.textContent = 'Copy'; }, 1200);
+    } else {
+      api.postMessage({ type: 'ai:apply', path: store.getAttribute('data-path'), content: store.textContent });
+      b.textContent = 'Applying…';
+      setTimeout(function () { b.textContent = 'Apply'; }, 2000);
+    }
+  });
+
+  function send() {
+    var text = q.value.trim();
+    if (!text || streaming) return;
+    var box = $('emptyState');
+    if (box) box.remove();
+    chatted = true;
+    addUser(text);
+    q.value = '';
+    var bodyEl = addAi();
+    var id = 'm' + Date.now().toString(36);
+    streaming = { id: id, bodyEl: bodyEl, raw: '' };
+    sendBtn.disabled = true; stopBtn.disabled = false;
+    api.postMessage({ type: 'ai:chat', id: id, text: text, attachActive: attachActive });
+  }
+  sendBtn.onclick = send;
+  stopBtn.onclick = function () { if (streaming) api.postMessage({ type: 'ai:stop', id: streaming.id }); };
+  clearBtn.onclick = function () { history = []; msgs.innerHTML = '<div id="emptyState"></div>'; chatted = false; showEmpty(); };
+  q.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+
+  providerEl.onchange = function () {
+    SETTINGS.provider = providerEl.value; SETTINGS.model = ''; modelEl.value = '';
+    api.postMessage({ type: 'ai:saveSettings', provider: SETTINGS.provider, model: '', baseOverride: '', completeOn: completeOn.checked, completeModel: completeModel.value.trim() });
+  };
+  $('saveBtn').onclick = function () {
+    api.postMessage({ type: 'ai:saveSettings', provider: providerEl.value, model: modelEl.value.trim(), baseOverride: '', completeOn: completeOn.checked, completeModel: completeModel.value.trim(), key: keyEl.value });
+    keyEl.value = '';
+  };
+  $('testBtn').onclick = function () { api.postMessage({ type: 'ai:test' }); };
+  $('modelsBtn').onclick = function () { api.postMessage({ type: 'ai:models' }); };
+  completeOn.onchange = function () {
+    api.postMessage({ type: 'ai:saveSettings', provider: providerEl.value, model: modelEl.value.trim(), baseOverride: '', completeOn: completeOn.checked, completeModel: completeModel.value.trim() });
+  };
+
+  window.addEventListener('message', function (e) {
+    var m = e.data || {};
+    if (m.type === 'ai:init') {
+      PRESETS = m.presets || []; SETTINGS = Object.assign(SETTINGS, m.settings || {});
+      refreshCfg(); chipHtml(); showEmpty(); maybeFetch();
+    } else if (m.type === 'ai:state') {
+      SETTINGS = Object.assign(SETTINGS, m.settings || {});
+      refreshCfg(); showEmpty(); maybeFetch();
+    } else if (m.type === 'ai:chunk') {
+      if (streaming && streaming.id === m.id) { streaming.raw += m.token; renderAi(streaming.bodyEl, streaming.raw); }
+    } else if (m.type === 'ai:done') {
+      if (streaming && streaming.id === m.id) {
+        history.push({ q: m.q, a: streaming.raw });
+        streaming = null; sendBtn.disabled = false; stopBtn.disabled = true;
+      }
+    } else if (m.type === 'ai:error') {
+      if (streaming && streaming.id === m.id) {
+        renderAi(streaming.bodyEl, '⚠ ' + (m.error || 'Request failed.'));
+        streaming = null; sendBtn.disabled = false; stopBtn.disabled = true;
+      } else {
+        keyState.innerHTML = '<span class="err">⚠ ' + esc(m.error || 'Request failed.') + '</span>';
+      }
+    } else if (m.type === 'ai:modelsResult') {
+      if (m.error) keyState.innerHTML = '<span class="err">⚠ ' + esc(m.error) + '</span>';
+      else if (Array.isArray(m.models) && m.models.length) {
+        modelList.innerHTML = m.models.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('');
+        keyState.innerHTML = '<span class="ok">✓ ' + m.models.length + ' models found — pick from the list</span>';
+      }
+    } else if (m.type === 'ai:applied') {
+      keyState.innerHTML = m.ok ? '<span class="ok">✓ wrote ' + esc(m.path) + '</span>'
+        : '<span class="err">⚠ ' + esc(m.error || ('Could not write ' + m.path)) + '</span>';
+      setTimeout(refreshCfg, 2500);
+    } else if (m.type === 'ai:testResult') {
+      keyState.innerHTML = m.ok ? '<span class="ok">✓ connected — "' + esc(m.text) + '"</span>'
+        : '<span class="err">⚠ ' + esc(m.error || 'Test failed.') + '</span>';
+    }
+  });
+  api.postMessage({ type: 'ai:ready' });
+})();
+</script>
+</body>
+</html>

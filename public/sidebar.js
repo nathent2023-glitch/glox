@@ -58,6 +58,12 @@
   // Servers icon
   icons.server='<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 8h4M7 12h10"/><circle cx="17" cy="8" r="1"/><circle cx="17" cy="12" r="1"/></svg>';
 
+  // Themes icon (palette)
+  icons.palette='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.2"/><circle cx="14" cy="9" r="1.2"/><circle cx="15.5" cy="14" r="1.2"/><path d="M12 3a9 9 0 0 1 0 18c-1.5 0-2-1-1.4-2.2.7-1.4-.1-3-1.7-3H7a3.5 3.5 0 0 1-2.6-5.8A9 9 0 0 1 12 3Z"/></svg>';
+
+  // Theme packs engine (real feature — loads on every page)
+  (function(){var s=document.createElement('script');s.src='/theme-engine.js';document.head.appendChild(s);})();
+
   var nav=document.createElement('nav');
   nav.className='sidebar';
   nav.innerHTML=''
@@ -66,6 +72,7 @@
       +sbItem('/chat','chat','chat','Chat')
       +sbItem('/servers','servers','server','Servers')
       +sbItem('/games','games','games','Games')
+      +sbItem('/themes','themes','palette','Themes')
       +'<div id="serversSection" style="margin-top:16px">'
         +'<div class="nav-section-label" style="display:flex;align-items:center;justify-content:space-between">Your servers <span id="serverCount" style="font-size:0.7rem;color:var(--text-tertiary)">0/3</span></div>'
         +'<div id="serverList"></div>'
@@ -83,6 +90,13 @@
     +'</div></div>';
 
   document.body.insertBefore(nav,document.body.firstChild);
+
+  // Push-aside: hovering the rail flags the body; CSS slides the page
+  // content right so the open card never covers page text.
+  nav.addEventListener('mouseenter',function(){document.body.classList.add('sb-open')});
+  nav.addEventListener('mouseleave',function(){document.body.classList.remove('sb-open')});
+  // Theme engine hook: let packs mount rail art + icon sets on this nav.
+  try{window.dispatchEvent(new Event('cudic:sidebar-ready'));}catch(e){}
 
   nav.querySelectorAll('.sidebar-item').forEach(function(el){
     if(el.getAttribute('data-p')===page) el.classList.add('active');

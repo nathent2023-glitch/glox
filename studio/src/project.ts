@@ -546,7 +546,8 @@ export function registerProjectCommands(): void {
           title: { value: 'Cudic: Save project', original: 'Cudic: Save project' },
           menu: [
             { id: MenuId.CommandPalette },
-            { id: MenuId.MenubarFileMenu, group: '5_glox' }
+            { id: MenuId.MenubarFileMenu, group: '5_glox' },
+            { id: MenuId.EditorContext, group: 'cudic' }
           ]
         });
       }
@@ -564,7 +565,8 @@ export function registerProjectCommands(): void {
           title: { value: 'Cudic: Import files', original: 'Cudic: Import files' },
           menu: [
             { id: MenuId.CommandPalette },
-            { id: MenuId.MenubarFileMenu, group: '5_glox' }
+            { id: MenuId.MenubarFileMenu, group: '5_glox' },
+            { id: MenuId.EditorContext, group: 'cudic' }
           ]
         });
       }
@@ -582,7 +584,8 @@ export function registerProjectCommands(): void {
           title: { value: 'Cudic: Import folder', original: 'Cudic: Import folder' },
           menu: [
             { id: MenuId.CommandPalette },
-            { id: MenuId.MenubarFileMenu, group: '5_glox' }
+            { id: MenuId.MenubarFileMenu, group: '5_glox' },
+            { id: MenuId.EditorContext, group: 'cudic' }
           ]
         });
       }
@@ -600,7 +603,8 @@ export function registerProjectCommands(): void {
           title: { value: 'Cudic: Export project as zip', original: 'Cudic: Export project as zip' },
           menu: [
             { id: MenuId.CommandPalette },
-            { id: MenuId.MenubarFileMenu, group: '5_glox' }
+            { id: MenuId.MenubarFileMenu, group: '5_glox' },
+            { id: MenuId.EditorContext, group: 'cudic' }
           ]
         });
       }
@@ -618,7 +622,8 @@ export function registerProjectCommands(): void {
           title: { value: 'Cudic: Publish project', original: 'Cudic: Publish project' },
           menu: [
             { id: MenuId.CommandPalette },
-            { id: MenuId.MenubarFileMenu, group: '5_glox' }
+            { id: MenuId.MenubarFileMenu, group: '5_glox' },
+            { id: MenuId.EditorContext, group: 'cudic' }
           ]
         });
       }
@@ -636,7 +641,8 @@ export function registerProjectCommands(): void {
           title: { value: 'Cudic: Unpublish project', original: 'Cudic: Unpublish project' },
           menu: [
             { id: MenuId.CommandPalette },
-            { id: MenuId.MenubarFileMenu, group: '5_glox' }
+            { id: MenuId.MenubarFileMenu, group: '5_glox' },
+            { id: MenuId.EditorContext, group: 'cudic' }
           ]
         });
       }
@@ -654,7 +660,8 @@ export function registerProjectCommands(): void {
           title: { value: 'Cudic: Delete project', original: 'Cudic: Delete project' },
           menu: [
             { id: MenuId.CommandPalette },
-            { id: MenuId.MenubarFileMenu, group: '5_glox' }
+            { id: MenuId.MenubarFileMenu, group: '5_glox' },
+            { id: MenuId.EditorContext, group: 'cudic' }
           ]
         });
       }

@@ -87,6 +87,7 @@ const MIME = {
   '.html': 'text/html',
   '.css': 'text/css',
   '.js': 'application/javascript',
+  '.mjs': 'text/javascript',
   '.json': 'application/json',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -717,6 +718,61 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     return;
   }
 
+  // ── API: AI fetch proxy (Cudic AI panel) ────────────────────────
+  // Browsers block cross-origin calls to most LLM providers (no CORS), so
+  // the Studio panel routes cloud calls through here. Login required (no
+  // open relay); only whitelisted AI hosts, https only, loopback rejected
+  // (local engines like Ollama are called direct from the browser).
+  const AI_HOSTS = new Set([
+    'api.openai.com', 'api.anthropic.com', 'generativelanguage.googleapis.com',
+    'api.x.ai', 'api.deepseek.com', 'api.mistral.ai', 'api.groq.com',
+    'api.together.xyz', 'api.fireworks.ai', 'api.cerebras.ai', 'api.deepinfra.com',
+    'api.cohere.com', 'api.perplexity.ai', 'api.minimax.io', 'api.moonshot.ai',
+    'api.zhipu.ai', 'open.bigmodel.cn', 'dashscope.aliyuncs.com', 'api.stepfun.com',
+    'api.01.ai', 'api.sarvam.ai', 'api.upstage.ai', 'api.ai21.com', 'api.writer.com',
+    'api.hyperbolic.xyz', 'api.nebius.ai', 'api.sambanova.ai', 'api.novita.ai',
+    'siliconflow.cn', 'api.siliconflow.cn', 'api.infermatic.ai', 'api.kluster.ai',
+    'api.chutes.ai', 'llm.chutes.ai', 'api.featherless.ai', 'api.targon.com', 'api.friendli.ai',
+    'api.nscale.com', 'api.parasail.io', 'api.lambda.ai', 'api.endpoints.anyscale.com',
+    'api.baseten.co', 'api.cloudflare.com', 'api.venice.ai', 'api.z.ai',
+    'api.hunyuan.cloud.tencent.com', 'qianfan.baidubce.com', 'openrouter.ai',
+    'opencode.ai', 'api.aimlapi.com', 'api.zeroone.ai'
+  ]);
+  if (url.pathname === '/api/ai/fetch' && req.method === 'POST') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Sign in to use cloud models.' })); return; }
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Sign in to use cloud models.' })); return; }
+    const body = await readBody(req);
+    let target;
+    try { target = new URL(String(body.url || '')); } catch { target = null; }
+    const hostOk = target && target.protocol === 'https:' &&
+      (AI_HOSTS.has(target.hostname) || target.hostname.endsWith('.openai.azure.com'));
+    const loopback = target && /^(localhost|127\.|0\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1|fc00:|fe80:)/i.test(target.hostname);
+    if (!hostOk || loopback) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Target not allowed.' })); return; }
+    const fwdHeaders = {};
+    for (const [k, v] of Object.entries(body.headers || {})) {
+      if (typeof v === 'string' && v.length < 8192 &&
+        /^(authorization|content-type|x-api-key|x-goog-api-key|anthropic-version|openai-organization|openai-project|http-referer|x-title)$/i.test(k)) fwdHeaders[k] = v;
+    }
+    let upstream;
+    try {
+      upstream = await fetch(target.toString(), {
+        method: body.method === 'GET' ? 'GET' : 'POST',
+        headers: fwdHeaders,
+        body: body.method === 'GET' ? undefined : (typeof body.body === 'string' ? body.body : JSON.stringify(body.body ?? {}))
+      });
+    } catch (e) { res.writeHead(502, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Upstream unreachable.' })); return; }
+    res.writeHead(upstream.status, { 'Content-Type': upstream.headers.get('content-type') || 'application/json', 'Cache-Control': 'no-store' });
+    try {
+      for await (const chunk of upstream.body) { res.write(chunk); }
+    } catch (e) {}
+    res.end();
+    return;
+  }
+
   // ── API: list game comments ──────────────────────────────────
   if (/^\/api\/games\/[^/]+\/comments$/.test(url.pathname) && req.method === 'GET') {
     cors(res);
@@ -973,6 +1029,11 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
   // ── Redirect /games to /games.html ────────────────────────────
   if (url.pathname === '/games') {
     url.pathname = '/games.html';
+  }
+
+  // ── Redirect /themes to /themes.html ──────────────────────────
+  if (url.pathname === '/themes') {
+    url.pathname = '/themes.html';
   }
 
   // ── Redirect /editor to /editor.html ──────────────────────────

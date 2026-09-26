@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cudic — Theme Packs</title>
+    <link rel="stylesheet" href="/sidebar.css?v=8">
+    <style>
+        body {
+            display: flex;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        .themes-layout {
+            flex: 1;
+            width: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 0;
+            background: var(--panel);
+        }
+
+        .themes-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 28px 32px;
+        }
+
+        .pack-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .pack-card {
+            background: var(--panel-raised);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .pack-preview {
+            position: relative;
+            aspect-ratio: 16/9;
+            background: #0a0c1a;
+            overflow: hidden;
+        }
+
+        .pack-preview canvas, .pack-preview img, .pack-preview video {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .pack-chrome {
+            position: absolute;
+            left: 12%;
+            right: 12%;
+            top: 18%;
+            bottom: 14%;
+            border-radius: 8px;
+            border: 1px solid;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+        }
+
+        .pack-chrome .bar {
+            height: 8px;
+            border-radius: 4px;
+        }
+
+        .pack-chrome .pill {
+            height: 16px;
+            width: 64px;
+            border-radius: 8px;
+            margin-top: auto;
+        }
+
+        .pack-info { padding: 14px 16px 16px; }
+        .pack-name {
+            font-family: var(--font-head);
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        .pack-author { font-size: 0.75rem; color: var(--text-tertiary); margin: 2px 0 8px; }
+        .pack-desc { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; }
+        .pack-dots { display: flex; gap: 6px; margin-bottom: 10px; }
+        .pack-dots span { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.25); }
+        .pack-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+        .pack-tags span {
+            font-size: 0.65rem; font-weight: 700; padding: 3px 9px; border-radius: 99px;
+            background: var(--signal-tint); color: var(--signal);
+        }
+        .pack-actions { display: flex; gap: 8px; }
+        .pack-install {
+            flex: 1; font-family: var(--font-head); font-weight: 600; font-size: 0.85rem;
+            padding: 9px; border-radius: 10px; border: none; cursor: pointer;
+            background: var(--signal); color: #fff;
+        }
+        .pack-install.installed { background: var(--panel-raised); color: var(--signal); border: 1px solid var(--signal); cursor: default; }
+
+        #packToast {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: var(--panel-raised); border: 1px solid var(--signal); color: var(--text-primary);
+            border-radius: 12px; padding: 12px 20px; font-size: 0.85rem; font-weight: 600;
+            opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.25s; z-index: 9999;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
+        #packToast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+
+<body data-page="themes">
+    <div class="themes-layout">
+        <div class="topbar">
+            <h1>Theme packs</h1>
+            <button id="resetPack" class="btn btn-secondary" style="display:none;width:auto">Reset to default</button>
+        </div>
+        <div class="themes-content">
+            <div class="pack-grid" id="packGrid"></div>
+        </div>
+    </div>
+    <div id="packToast"></div>
+    <script src="/config.js"></script>
+    <script src="/sidebar.js"></script>
+    <script>
+    (function () {
+      var grid = document.getElementById('packGrid'), resetBtn = document.getElementById('resetPack'), toastEl = document.getElementById('packToast');
+      var manifests = {};
+      function toast(msg) {
+        toastEl.textContent = msg; toastEl.classList.add('show');
+        setTimeout(function () { toastEl.classList.remove('show'); }, 2600);
+      }
+      function waitEngine(tries, cb) {
+        if (window.CudicTheme) return cb();
+        if (tries <= 0) return cb();
+        setTimeout(function () { waitEngine(tries - 1, cb); }, 100);
+      }
+      function dotsHtml(m) {
+        var c = m.colors || {}, keys = ['signal', 'panel', 'raised', 'line', 'ink'];
+        return '<div class="pack-dots">' + keys.map(function (k) {
+          return '<span style="background:' + (c[k] || 'transparent') + '"></span>';
+        }).join('') + '</div>';
+      }
+      function chromeHtml(m) {
+        var c = m.colors || {};
+        var panel = c.panel || '#fff', line = c.line || '#ccc', signal = c.signal || '#774DCB', tp = c.tp || '#333';
+        return '<div class="pack-chrome" style="background:' + panel + ';border-color:' + line + '">' +
+          '<div class="bar" style="width:45%;background:' + tp + ';opacity:0.85"></div>' +
+          '<div class="bar" style="width:80%;background:' + tp + ';opacity:0.3"></div>' +
+          '<div class="bar" style="width:65%;background:' + tp + ';opacity:0.3"></div>' +
+          '<div class="pill" style="background:' + signal + '"></div></div>';
+      }
+      function previewHtml(m) {
+        var bg = m.background || {};
+        if (bg.type === 'image') return '<img src="' + bg.src + '" alt="">' + chromeHtml(m);
+        if (bg.type === 'video') return '<video src="' + bg.src + '" muted loop playsinline autoplay></video>' + chromeHtml(m);
+        if (bg.type === 'scene') return '<canvas data-scene="' + bg.scene + '"></canvas>' + chromeHtml(m);
+        return chromeHtml(m);
+      }
+      function cardHtml(m, installed) {
+        var tags = (m.tags || []).map(function (t) { return '<span>' + t + '</span>'; }).join('');
+        return '<div class="pack-card"><div class="pack-preview">' + previewHtml(m) + '</div>' +
+          '<div class="pack-info"><div class="pack-name">' + m.name + '</div>' +
+          '<div class="pack-author">by ' + (m.author || 'cudic') + '</div>' +
+          '<div class="pack-desc">' + (m.description || '') + '</div>' +
+          dotsHtml(m) + '<div class="pack-tags">' + tags + '</div>' +
+          '<div class="pack-actions"><button class="pack-install' + (installed ? ' installed' : '') + '" data-slug="' + m.slug + '"' +
+          (installed ? ' disabled' : '') + '>' + (installed ? '✓ Installed' : 'Install') + '</button></div></div></div>';
+      }
+      function refreshButtons() {
+        var cur = window.CudicTheme ? CudicTheme.storedSlug() : null;
+        grid.querySelectorAll('.pack-install').forEach(function (b) {
+          var on = b.getAttribute('data-slug') === cur;
+          b.classList.toggle('installed', on); b.disabled = on;
+          b.textContent = on ? '✓ Installed' : 'Install';
+        });
+        resetBtn.style.display = cur ? '' : 'none';
+      }
+      grid.addEventListener('click', function (e) {
+        var b = e.target.closest('.pack-install');
+        if (!b || b.disabled || !window.CudicTheme) return;
+        var m = manifests[b.getAttribute('data-slug')];
+        if (!m) return;
+        CudicTheme.installPack(m, m.slug);
+        refreshButtons();
+        toast('"' + m.name + '" installed — looking sharp.');
+      });
+      resetBtn.addEventListener('click', function () {
+        if (!window.CudicTheme) return;
+        CudicTheme.clearPack();
+        refreshButtons();
+        toast('Back to the default look.');
+      });
+      async function boot() {
+        try {
+          var idx = await (await fetch('/themes/index.json', { cache: 'no-store' })).json();
+          var slugs = idx.packs || [];
+          for (var i = 0; i < slugs.length; i++) {
+            try {
+              var m = await (await fetch('/themes/' + encodeURIComponent(slugs[i]) + '/manifest.json', { cache: 'no-store' })).json();
+              manifests[m.slug] = m;
+            } catch (e) {}
+          }
+          var cur = window.CudicTheme ? CudicTheme.storedSlug() : null;
+          grid.innerHTML = Object.keys(manifests).map(function (k) { return cardHtml(manifests[k], manifests[k].slug === cur); }).join('');
+          resetBtn.style.display = cur ? '' : 'none';
+          // Start live scene previews on the cards
+          if (window.CudicTheme) grid.querySelectorAll('canvas[data-scene]').forEach(function (cv) {
+            var card = cv.closest('.pack-card');
+            var slug = card.querySelector('.pack-install').getAttribute('data-slug');
+            var m = manifests[slug];
+            CudicTheme.previewScene(cv, cv.getAttribute('data-scene'), (m.background && m.background.params) || {});
+          });
+        } catch (e) {
+          grid.innerHTML = '<div style="color:var(--text-tertiary)">Could not load theme packs.</div>';
+        }
+      }
+      waitEngine(50, boot);
+    })();
+    </script>
+</body>
+
+</html>
